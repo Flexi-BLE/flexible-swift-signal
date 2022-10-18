@@ -8,10 +8,25 @@
 import Foundation
 import Accelerate
 
-struct TimeSeries<T: FloatingPoint> {
+protocol FXBFloatingPoint { }
+extension Float: FXBFloatingPoint { }
+extension Double: FXBFloatingPoint { }
+
+struct TimeSeries<T: FXBFloatingPoint> {
     public private(set) var index: Array<Double>
     public private(set) var vecs: [[T]]
     public private(set) var persistance: Int
+    
+    enum Operation {
+        case add
+        case substract
+        case multiply
+        case divide
+    }
+    
+    enum Filter {
+        case zscore
+    }
     
     public init(persistence: Int) {
         self.index = []
@@ -90,5 +105,66 @@ struct TimeSeries<T: FloatingPoint> {
         
         self.index.append(epoch)
         for (i, _) in vecs.enumerated() { vecs[i].append(values[i]) }
+    }
+    
+    public mutating func apply(colIdx: Int, vec: [T], op: Operation) {
+        if T.self is Float.Type {
+            var result = [Float](repeating: 0.0, count: self.count)
+            let a = col(at: colIdx) as! [Float]
+            switch op {
+            case .add: vDSP.add(a, vec as! [Float], result: &result)
+            case .substract: vDSP.subtract(a, vec as! [Float], result: &result)
+            case .multiply: vDSP.multiply(a, vec as! [Float], result: &result)
+            case .divide: vDSP.divide(a, vec as! [Float], result: &result)
+            }
+            
+            vecs.append(result as! [T])
+        } else if T.self is Double.Type {
+            var result = [Double](repeating: 0.0, count: self.count)
+            let a = col(at: colIdx) as! [Double]
+            switch op {
+            case .add: vDSP.add(a, vec as! [Double], result: &result)
+            case .substract: vDSP.subtract(a, vec as! [Double], result: &result)
+            case .multiply: vDSP.multiply(a, vec as! [Double], result: &result)
+            case .divide: vDSP.divide(a, vec as! [Double], result: &result)
+            }
+            
+            vecs.append(result as! [T])
+        }
+    }
+    
+    public mutating func apply(colA: Int, colB: Int, op: Operation) {
+        if Float.self is T {
+            var result = [Float](repeating: 0.0, count: self.count)
+            let a = col(at: colA) as! [Float]
+            let b = col(at: colB) as! [Float]
+            switch op {
+            case .add: vDSP.add(a, b, result: &result)
+            case .substract: vDSP.subtract(a, b, result: &result)
+            case .multiply: vDSP.multiply(a, b, result: &result)
+            case .divide: vDSP.divide(a, b, result: &result)
+            }
+            
+            vecs.append(result as! [T])
+        } else if Double.self is T {
+            var result = [Double](repeating: 0.0, count: self.count)
+            let a = col(at: colA) as! [Double]
+            let b = col(at: colB) as! [Double]
+            switch op {
+            case .add: vDSP.add(a, b, result: &result)
+            case .substract: vDSP.subtract(a, b, result: &result)
+            case .multiply: vDSP.multiply(a, b, result: &result)
+            case .divide: vDSP.divide(a, b, result: &result)
+            }
+            
+            vecs.append(result as! [T])
+        }
+    }
+    
+    public mutating func apply(filter: Filter, to colIdx: Int = 0) {
+        switch filter {
+        case .zscore:
+            
+        }
     }
 }

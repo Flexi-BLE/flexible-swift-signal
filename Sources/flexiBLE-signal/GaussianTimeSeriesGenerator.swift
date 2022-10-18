@@ -18,7 +18,8 @@ class GaussianTimeSeriesGenerator: TimeSeriesGenerator<Float> {
             mean: mean,
             deviation: std
         )
-        super.init(kernel: { return Float($0) }, step: step, start: start)
+        
+        super.init(step: step, start: start, kernel: { return Float($0) })
     }
     
     override func next(_ count: Int = 1) {
