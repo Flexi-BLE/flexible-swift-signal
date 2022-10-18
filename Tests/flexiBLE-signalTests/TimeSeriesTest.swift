@@ -50,6 +50,25 @@ final class TimeSeriesTests: XCTestCase {
         XCTAssertEqual(Int(ts.frequency() * 100), Int(step * 100))
     }
 
+    func testLimitingPersistence() throws {
+        var ts: TimeSeries<Float> = TimeSeries(persistence: 100)
+
+        for i in 0...99 {
+            ts.add(date: Date.now.addingTimeInterval(Double(i)), values: [1.0])
+        }
+
+        XCTAssertEqual(ts.count, 100)
+        var lastDate = Date.now.addingTimeInterval(100)
+        var secondDate = ts.index[1]
+
+        ts.add(date: lastDate, values: [1.0]) // overflow
+
+        XCTAssertEqual(ts.count, 100)
+        XCTAssertEqual(ts.index[0], secondDate)
+        XCTAssertEqual(ts.index.last, lastDate.timeIntervalSince1970)
+        XCTAssertEqual(Int(ts.frequency() * 100), 100)
+    }
+
     func testRangeInitialationTime() throws {
         self.measure {
             for _ in 0..<10 {
