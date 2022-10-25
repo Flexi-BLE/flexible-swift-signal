@@ -87,7 +87,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public var isEmpty: Bool {
         count == 0
     }
-    
+
     public var colNames: [String?] {
         return vecNames ?? []
     }
@@ -100,7 +100,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public func indexDates() -> [Date] {
         return index.map { Date(timeIntervalSince1970: $0) }
     }
-    
+
     public func col(at i: Int) -> [T] {
         guard vecs.count > i else { return [] }
         return vecs[i]
@@ -119,7 +119,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public mutating func setColName(for idx: Int, name: String) {
         vecNames[idx] = name
     }
-    
+
     public func frequency() -> Double {
         var result = [Double](repeating: 0.0, count: self.count-1)
         vDSP.subtract(index.dropFirst(), index.dropLast(), result: &result)
@@ -281,15 +281,15 @@ public struct TimeSeries<T: FXBFloatingPoint> {
             vecs[$0] = Array(vecs[$0].dropFirst(cursor))
         })
     }
-    
+
     public func cut(before: Date, after: Date) -> TimeSeries<T> {
         guard let startCursor = index.firstIndex(where: { $0 >= before.timeIntervalSince1970 }) else {
             return TimeSeries<T>(persistence: 0)
         }
-        
+
         var newIndex = Array(index.dropFirst(startCursor))
         var newVecs = vecs.map({ Array($0.dropFirst(startCursor)) })
-        
+
 //        let endIdx = newIndex.lastIndex(where: { $0 >= after.timeIntervalSince1970 }) ?? newIndex.count - 1
 //        let endCursor = newIndex.count - 1 - endIdx
 //
