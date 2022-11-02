@@ -44,7 +44,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public init(with dates: [Date], vecs: [[T]], vecNames: [String]?=nil, persistence: Int=1000) {
         self.index = dates.map { $0.timeIntervalSince1970 }
         self.vecs = vecs
-        self.persistence = 1000
+        self.persistence = persistence
         self.vecNames = vecNames == nil ? Array(0..<vecs.count).map({ String($0) }) : vecNames!
     }
     
@@ -89,7 +89,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     }
 
     public var colNames: [String?] {
-        return vecNames ?? []
+        return vecNames
     }
     
     public func relativeIndex() -> [Double] {
@@ -99,6 +99,17 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     
     public func indexDates() -> [Date] {
         return index.map { Date(timeIntervalSince1970: $0) }
+    }
+
+    public mutating func setPersistence(_ newValue: Int) {
+        if self.persistence > newValue {
+            self.index.dropFirst(self.persistence - newValue)
+            for i in 0..<vecs.count {
+                vecs[i].dropFirst(self.persistence - newValue)
+            }
+        }
+
+        self.persistence = newValue
     }
 
     public func col(at i: Int) -> [T] {
@@ -140,10 +151,14 @@ public struct TimeSeries<T: FXBFloatingPoint> {
         }
 
         if self.count > 0 {
-            guard epoch > self.index.last! else { return }
+            guard epoch >= self.index.last! else {
+                return
+            }
         }
 
-        guard values.count == vecs.count else { return }
+        guard values.count == vecs.count else {
+            return
+        }
         let shouldPop = self.count == self.persistence
 
         if shouldPop { self.index.remove(at: 0) }
@@ -251,7 +266,7 @@ public struct TimeSeries<T: FXBFloatingPoint> {
 
     public func splitSort(criteria: [TimeSeriesSortCondition<T>]) -> [TimeSeries<T>] {
         var tss = [TimeSeries<T>](
-                repeating: TimeSeries<T>(persistence: persistence),
+                repeating: TimeSeries<T>(persistence: self.persistence),
                 count: criteria.count
         )
 
@@ -260,12 +275,14 @@ public struct TimeSeries<T: FXBFloatingPoint> {
                 cond.filter(val) ? vecIdx : nil
             })
 
-            tss[criteriaIdx].setColNames(cond.include.map { vecNames[$0] })
             sortedVecIdx.forEach { sortIdx in
                 tss[criteriaIdx].add(
-                        epoch: index[sortIdx],
-                        values: cond.include.map { vecs[$0][sortIdx] }
+                    epoch: index[sortIdx],
+                    values: cond.include.map { vecs[$0][sortIdx] }
                 )
+            }
+            if let names = cond.names {
+                tss[criteriaIdx].setColNames(names)
             }
         }
         tss = tss.filter({ !$0.isEmpty }) // remove everything that is empty
@@ -295,6 +312,6 @@ public struct TimeSeries<T: FXBFloatingPoint> {
 //
 //        newIndex = Array(newIndex.dropLast(endCursor))
 //        newVecs = newVecs.map({ Array($0.dropLast(endCursor)) })
-        return TimeSeries(with: newIndex, vecs: newVecs)
+        return TimeSeries(with: newIndex, vecs: newVecs, persistence: persistence)
     }
 }
