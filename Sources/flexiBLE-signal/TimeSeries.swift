@@ -103,9 +103,9 @@ public struct TimeSeries<T: FXBFloatingPoint> {
 
     public mutating func setPersistence(_ newValue: Int) {
         if self.persistence > newValue {
-            self.index.dropFirst(self.persistence - newValue)
+            index = Array(index.dropFirst(self.persistence - newValue))
             for i in 0..<vecs.count {
-                vecs[i].dropFirst(self.persistence - newValue)
+                vecs[i] = Array(vecs[i].dropFirst(self.persistence - newValue))
             }
         }
 
