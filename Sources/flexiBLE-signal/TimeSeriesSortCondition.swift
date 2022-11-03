@@ -11,7 +11,7 @@ public struct TimeSeriesSortCondition<T: FXBFloatingPoint> {
     public let filter: (T)->Bool
     // the columns to include in the new time series objects (post sort)
     public let include: [Int]
-
+    // the names of each column (from include) -- if null will use names from the source time series
     public let names: [String]?
 
     public init(colIdx: Int, filter: @escaping (T)->Bool, include: [Int], names: [String]? = nil) {
@@ -25,7 +25,8 @@ public struct TimeSeriesSortCondition<T: FXBFloatingPoint> {
         TimeSeriesSortCondition<T>(
                 colIdx: idx,
                 filter: { _ in true },
-                include: [idx]
+                include: [idx],
+                names: name == nil ? nil : [name!]
         )
     }
 
