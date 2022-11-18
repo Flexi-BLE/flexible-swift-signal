@@ -20,25 +20,23 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testSinWave() throws {
-        let amplitude: Float = 1.0
-        let sig = TimeSeriesFactory.sinWave(amplitude: amplitude, freq: 10.0, phase: 0.0)
+        let sig = SinWaveGenerator(freq: 10.0)
         sig.next(100)
         
         let mean = Int(vDSP.mean(sig.ts.col(at: 0)) * 100)
         XCTAssertEqual(mean, 0)
         
         let max = vDSP.maximum(sig.ts.col(at: 0))
-        XCTAssertLessThanOrEqual(max, amplitude)
+        XCTAssertLessThanOrEqual(max, 1.0)
         
         let min = vDSP.minimum(sig.ts.col(at: 0))
-        XCTAssertGreaterThanOrEqual(min, -amplitude)
+        XCTAssertGreaterThanOrEqual(min, -1.0)
     }
     
     func testGaussianNoise() throws {
-        let amplitude: Float = 1.0
-        let signal = TimeSeriesFactory.sinWave(amplitude: amplitude, freq: 10.0, phase: 0.0, step: 0.1)
+        let signal = SinWaveGenerator(freq: 10.0)
         signal.next(1000)
-        let noise = TimeSeriesFactory.gaussianNoise(mean: 0.0, std: 1.0, step: 0.1)
+        let noise = GaussianNoiseGenerator(mean: 0.0, std: 1.0, step: 0.1)
         noise.next(1000)
         signal.ts.apply(colIdx: 0, vec: noise.ts.col(at: 0), op: .add)
         
@@ -51,7 +49,7 @@ final class GeneratorTests: XCTestCase {
     func testPerformanceExample() throws {
         self.measure {
             for _ in 0...10 {
-                let sig = TimeSeriesFactory.sinWave(amplitude: 1.0, freq: 10.0, phase: 0.0, step: 0.1)
+                let sig = SinWaveGenerator(step: 0.1, freq: 10.0)
                 sig.next(1000)
             }
         }

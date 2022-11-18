@@ -8,7 +8,7 @@
 import Foundation
 import Accelerate
 
-public protocol FXBFloatingPoint { }
+public protocol FXBFloatingPoint: FloatingPoint { }
 extension Float: FXBFloatingPoint { }
 extension Double: FXBFloatingPoint { }
 
@@ -32,6 +32,10 @@ public struct TimeSeries<T: FXBFloatingPoint> {
         case zscore
         case demean
         case movingAverage(window: Int)
+        case lowPass(cutoff: Float, transition: Float)
+        case highPass(cutoff: Float, transition: Float)
+        case bandPass(cutoffHigh: Float, transitionHigh: Float, cutoffLow: Float, transitionLow: Float)
+        case bandReject(cutoffHigh: Float, transitionHigh: Float, cutoffLow: Float, transitionLow: Float)
     }
     
     public init(persistence: Int) {
@@ -238,6 +242,40 @@ public struct TimeSeries<T: FXBFloatingPoint> {
             case .demean: Filter.demean(x: x, result: &result)
             case .movingAverage(let w):
                 Filter.movingAverage(x: x, window: w, result: &result)
+            case .lowPass(let cutoff, let transition):
+                Filter.lowPass(
+                        x: x,
+                        frequency: 1.0/Float(frequency()),
+                        cutoff: cutoff,
+                        transition: transition,
+                        result: &result
+                )
+            case .highPass(let cutoff, let transition):
+                Filter.highpass(
+                    x: x,
+                    frequency: 1.0/Float(frequency()),
+                    cutoff: cutoff,
+                    transition: transition,
+                    result: &result
+                )
+            case .bandPass(let fH, let bH, let fL, let bL):
+                Filter.bandpass(
+                    x: x, frequency: 1.0/Float(frequency()),
+                    cutoffHigh: fH,
+                    transitionHigh: bH,
+                    cutoffLow: fL,
+                    transitionLow: bL,
+                    result: &result
+                )
+            case .bandReject(let fH, let bH, let fL, let bL):
+                Filter.bandreject(
+                    x: x, frequency: 1.0/Float(frequency()),
+                    cutoffHigh: fH,
+                    transitionHigh: bH,
+                    cutoffLow: fL,
+                    transitionLow: bL,
+                    result: &result
+                )
             }
 
             vecs.append(result as! [T])
@@ -251,6 +289,10 @@ public struct TimeSeries<T: FXBFloatingPoint> {
             case .zscore: Filter.zscore(x: x, result: &result)
             case .demean: Filter.demean(x: x, result: &result)
             case .movingAverage(let w): Filter.movingAverage(x: x, window: w, result: &result)
+            case .lowPass(_, _): fatalError("lowpass filter not supported for double precision")
+            case .highPass(_, _): fatalError("highpass filter not supported for double precision")
+            case .bandPass(_, _, _, _): fatalError("bandpass filter not supported for double precision")
+            case .bandReject(_, _, _, _): fatalError("bandreject filter not supported for double precision")
             }
 
             vecs.append(result as! [T])
@@ -261,6 +303,26 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public mutating func apply(colIdx: Int, kernel: @escaping (T)->T, name: String?=nil) {
         guard colIdx < colCount else { return }
         vecs.append(vecs[colIdx].map(kernel))
+        vecNames.append(name==nil ? String(vecs.count) : name!)
+    }
+
+    public mutating func vApply(colIdx: Int, kernel: ([Float],inout [Float]) -> (), name: String?=nil) {
+        guard colIdx < colCount else { return }
+        let x = self.col(at: colIdx) as! [Float]
+        var y = [Float](repeating: 0.0, count: self.count)
+
+        kernel(x, &y)
+        vecs.append(y as! [T])
+        vecNames.append(name==nil ? String(vecs.count) : name!)
+    }
+
+    public mutating func vApply(colIdx: Int, kernel: ([Double],inout [Double]) -> (), name: String?=nil) {
+        guard colIdx < colCount else { return }
+        let x = self.col(at: colIdx) as! [Double]
+        var y = [Double](repeating: 0.0, count: self.count)
+
+        kernel(x, &y)
+        vecs.append(y as! [T])
         vecNames.append(name==nil ? String(vecs.count) : name!)
     }
 

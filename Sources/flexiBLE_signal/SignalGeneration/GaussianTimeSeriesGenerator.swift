@@ -8,24 +8,31 @@
 import Foundation
 import GameKit
 
-class GaussianTimeSeriesGenerator: TimeSeriesGenerator<Float> {
+class GaussianNoiseGenerator: TimeSeriesGenerator {
     private let random = GKRandomSource()
     private let gen: GKGaussianDistribution
+
+    var step: Double
+    var cursor: Double
+    var i: Int = 0
+    var ts: TimeSeries<Float>
     
     init(mean: Float, std: Float, step: Double, start: Date?=nil) {
+        self.ts = TimeSeries(persistence: 1000)
+        self.cursor = start == nil ? 0.0 : start!.timeIntervalSince1970
+        self.step = step
         self.gen = GKGaussianDistribution(
             randomSource: random,
             mean: mean,
             deviation: std
         )
-        
-        super.init(step: step, start: start, kernel: { return Float($0) })
     }
     
-    override func next(_ count: Int = 1) {
+    func next(_ count: Int = 1) {
         for _ in 0...count {
             ts.add(epoch: cursor, values: [self.gen.nextUniform()])
             cursor += step
+            i += 1
         }
     }
 }

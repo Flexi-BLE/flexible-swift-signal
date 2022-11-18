@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "flexiBLE-signal",
+    name: "flexiBLE_signal",
     platforms: [
         .macOS(.v12),
         .iOS(.v13),
@@ -14,8 +14,8 @@ let package = Package(
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
-            name: "flexiBLE-signal",
-            targets: ["flexiBLE-signal"])
+            name: "flexiBLE_signal",
+            targets: ["flexiBLE_signal"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -29,14 +29,14 @@ let package = Package(
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages this package depends on.
         .target(
-            name: "flexiBLE-signal",
+            name: "flexiBLE_signal",
             dependencies: [
                 .product(name: "Collections", package: "swift-collections")
             ]),
         .testTarget(
-            name: "flexiBLE-signalTests",
+            name: "flexiBLE_signalTests",
             dependencies: [
-                "flexiBLE-signal",
+                "flexiBLE_signal",
                 .product(name: "Collections", package: "swift-collections")
             ]),
     ]

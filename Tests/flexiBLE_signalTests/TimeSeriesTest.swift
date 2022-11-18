@@ -97,6 +97,21 @@ final class TimeSeriesTests: XCTestCase {
         XCTAssertEqual(Set(cat3.col(at: 0)), Set<Float>([Float(2.0)]))
     }
 
+    func testvDSPApply() throws {
+        var ts = TimeSeries<Double>(persistence: 100)
+        for i in -50...50 {
+            ts.add(epoch: Double(i), values: [Double(i)])
+        }
+
+        XCTAssertLessThan(ts.col(at: 0)[0], 0)
+
+        ts.vApply(colIdx: 0) { (x: [Double], y: inout [Double]) in
+            vDSP.absolute(x, result: &y)
+        }
+
+        XCTAssertGreaterThan(ts.col(at: 1)[0], 0)
+    }
+
     func testColumnNames() throws {
         var ts = TimeSeries<Float>(persistence: 500)
         for i in 0...99 {
@@ -145,9 +160,7 @@ final class TimeSeriesTests: XCTestCase {
 
     func testRangeInitialationTime() throws {
         self.measure {
-            for _ in 0..<10 {
-                let _ = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 0.01)
-            }
+            let _ = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 0.01)
         }
     }
     
@@ -155,21 +168,17 @@ final class TimeSeriesTests: XCTestCase {
         let ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 0.01)
         
         self.measure {
-            for _ in 0..<10 {
-                let _ = ts.frequency()
-            }
+            let _ = ts.frequency()
         }
     }
     
     func testDSPRamp() throws {
         self.measure {
-            for _ in 0...10 {
-                let _ = vDSP.ramp(
+            let _ = vDSP.ramp(
                     withInitialValue: Date.now.timeIntervalSince1970,
                     increment: 0.01,
                     count: 1_000_000
-                )
-            }
+            )
         }
     }
 }
