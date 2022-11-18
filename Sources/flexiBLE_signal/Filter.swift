@@ -69,18 +69,18 @@ enum Filter {
             transition bL: Float,
             result: inout V
     ) where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
-        let length = nextPowerOf2(for: x.count)
+
+        var m = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
+
+        let length = nextPowerOf2(for: max(m.count, x.count))
         let paddedSignal = pad(x: x, to: length)
+        m = pad(x: m, to: length)
 
         // compute the impluse response of signal
         var fft = FFT(N: length)
         fft.forward(signal: paddedSignal)
         var signalIRReal = fft.forwardReal
         var signalIRImag = fft.forwardImag
-
-        var m = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
-
-        m = pad(x: m, to: length)
 
         // compute impluse response for filter
         fft.clear()
@@ -106,18 +106,18 @@ enum Filter {
             result: inout V
     ) where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
 
-        let length = nextPowerOf2(for: x.count)
+        // create the filter
+        var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
+
+        let length = nextPowerOf2(for: max(m.count, x.count))
         let paddedSignal = pad(x: x, to: length)
+        m = pad(x: m, to: length)
 
         // compute the impluse response of signal
         var fft = FFT(N: length)
         fft.forward(signal: paddedSignal)
         var signalIRReal = fft.forwardReal
         var signalIRImag = fft.forwardImag
-
-        var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
-
-        m = pad(x: m, to: length)
 
         // compute impluse response for filter
         fft.clear()
@@ -144,18 +144,18 @@ enum Filter {
             transitionLow bL: Float,
             result: inout V
     ) where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
-        let length = nextPowerOf2(for: x.count)
+
+        var m = makeBandPassFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
+
+        let length = nextPowerOf2(for: max(m.count, x.count))
         let paddedSignal = pad(x: x, to: length)
+        m = pad(x: m, to: length)
 
         // compute the impluse response of signal
         var fft = FFT(N: length)
         fft.forward(signal: paddedSignal)
         var signalIRReal = fft.forwardReal
         var signalIRImag = fft.forwardImag
-
-        var m = makeBandPassFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
-
-        m = pad(x: m, to: length)
 
         // compute impluse response for filter
         fft.clear()
@@ -182,18 +182,18 @@ enum Filter {
             transitionLow bL: Float,
             result: inout V
     ) where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
-        let length = nextPowerOf2(for: x.count)
+
+        var m = makeBandRejectFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
+
+        let length = nextPowerOf2(for: max(m.count, x.count))
         let paddedSignal = pad(x: x, to: length)
+        m = pad(x: m, to: length)
 
         // compute the impluse response of signal
         var fft = FFT(N: length)
         fft.forward(signal: paddedSignal)
         var signalIRReal = fft.forwardReal
         var signalIRImag = fft.forwardImag
-
-        var m = makeBandRejectFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
-
-        m = pad(x: m, to: length)
 
         // compute impluse response for filter
         fft.clear()
