@@ -21,7 +21,12 @@ func pad<T>(x: T, to len: Int) -> [Float] where T: AccelerateBuffer, T:Sequence,
     return x + [Float](repeating: 0.0, count: len - x.count)
 }
 
-func makeLowPassFilter(fS: Float, fL: Float, bL: Float) -> [Float] {
+func pad<T>(x: T, to len: Int) -> [Double] where T: AccelerateBuffer, T:Sequence, T.Element == Double  {
+    guard len >= x.count else { return x as! [Double] }
+    return x + [Double](repeating: 0.0, count: len - x.count)
+}
+
+public func makeLowPassFilter(fS: Float, fL: Float, bL: Float) -> [Float] {
     var M: Int = Int((4.0/(bL/fS)).rounded())
     if M % 2 == 0 { M += 1 } // M must be odd
 
@@ -46,7 +51,32 @@ func makeLowPassFilter(fS: Float, fL: Float, bL: Float) -> [Float] {
     return m
 }
 
-func makeHighPassFilter(fS: Float, fH: Float, bH: Float) -> [Float] {
+public func makeLowPassFilter(fS: Double, fL: Double, bL: Double) -> [Double] {
+    var M: Int = Int((4.0/(bL/fS)).rounded())
+    if M % 2 == 0 { M += 1 } // M must be odd
+
+    var m = vDSP.ramp(in: 0.0...Double(M-1), count: M)
+    vDSP.subtract(m, [Double](repeating: (Double(M)-1.0)/2.0, count: M), result: &m)
+    vDSP.multiply(2*(fL/fS), m, result: &m)
+
+    // apply sinc
+    m = m.map{ $0 == 0 ? 1 : sin(Double.pi*$0) / (Double.pi*$0) }
+
+    // constrcut blackman window
+    var blackman_window = [Double](repeating: 0, count: M)
+    vDSP_blkman_windowD(&blackman_window, vDSP_Length(M), 0)
+
+    // apply blackman to filter
+    vDSP.multiply(m, blackman_window, result: &m)
+
+    // normalize the filter
+    let mSum = vDSP.sum(m)
+    vDSP.divide(m, mSum, result: &m)
+
+    return m
+}
+
+public func makeHighPassFilter(fS: Float, fH: Float, bH: Float) -> [Float] {
     var m = makeLowPassFilter(fS: fS, fL: fH, bL: bH)
     // spectral inversion
     vDSP.multiply([Float](repeating: -1.0, count: m.count), m, result: &m)
@@ -55,14 +85,37 @@ func makeHighPassFilter(fS: Float, fH: Float, bH: Float) -> [Float] {
     return m
 }
 
-func makeBandPassFilter(fS: Float, fH: Float, bH: Float, fL: Float, bL: Float) -> [Float] {
+public func makeHighPassFilter(fS: Double, fH: Double, bH: Double) -> [Double] {
+    var m = makeLowPassFilter(fS: fS, fL: fH, bL: bH)
+    // spectral inversion
+    vDSP.multiply([Double](repeating: -1.0, count: m.count), m, result: &m)
+    m[Int(m.count/2)] += 1.0
+
+    return m
+}
+
+public func makeBandPassFilter(fS: Float, fH: Float, bH: Float, fL: Float, bL: Float) -> [Float] {
     let lp = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
     var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
     vDSP.convolve(lp, withKernel: m, result: &m)
     return m
 }
 
-func makeBandRejectFilter(fS: Float, fH: Float, bH: Float, fL: Float, bL: Float) -> [Float] {
+public func makeBandPassFilter(fS: Double, fH: Double, bH: Double, fL: Double, bL: Double) -> [Double] {
+    let lp = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
+    var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
+    vDSP.convolve(lp, withKernel: m, result: &m)
+    return m
+}
+
+public func makeBandRejectFilter(fS: Float, fH: Float, bH: Float, fL: Float, bL: Float) -> [Float] {
+    let lp = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
+    var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
+    vDSP.add(lp, m, result: &m)
+    return m
+}
+
+public func makeBandRejectFilter(fS: Double, fH: Double, bH: Double, fL: Double, bL: Double) -> [Double] {
     let lp = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
     var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
     vDSP.add(lp, m, result: &m)

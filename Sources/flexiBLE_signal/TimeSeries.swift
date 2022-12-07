@@ -12,7 +12,11 @@ public protocol FXBFloatingPoint: FloatingPoint { }
 extension Float: FXBFloatingPoint { }
 extension Double: FXBFloatingPoint { }
 
-public struct TimeSeries<T: FXBFloatingPoint> {
+public struct TimeSeries<T: FXBFloatingPoint>: Equatable {
+    public static func == (lhs: TimeSeries<T>, rhs: TimeSeries<T>) -> Bool {
+        return lhs.colCount == rhs.colCount && lhs.count == rhs.count && lhs.vecNames == rhs.vecNames
+    }
+    
     public private(set) var index: Array<Double>
 
     private var vecs: [[T]]
@@ -36,6 +40,19 @@ public struct TimeSeries<T: FXBFloatingPoint> {
         case highPass(cutoff: Float, transition: Float)
         case bandPass(cutoffHigh: Float, transitionHigh: Float, cutoffLow: Float, transitionLow: Float)
         case bandReject(cutoffHigh: Float, transitionHigh: Float, cutoffLow: Float, transitionLow: Float)
+        
+        public var id: String {
+            switch self {
+            case .minMaxScaling: return "Min Max Scaling"
+            case .zscore: return "Z-Score Normalization"
+            case .demean: return "Demean"
+            case .movingAverage(_): return "Moving Average"
+            case .lowPass(_,_): return "Low Pass"
+            case .highPass(_,_): return "High Pass"
+            case .bandPass(_,_,_,_): return "Band Pass"
+            case .bandReject(_,_,_,_): return "Band Reject"
+            }
+        }
     }
     
     public init(persistence: Int) {
@@ -134,6 +151,11 @@ public struct TimeSeries<T: FXBFloatingPoint> {
     public mutating func setColName(for idx: Int, name: String) {
         vecNames[idx] = name
     }
+    
+    public mutating func clear(rightOf idx: Int) {
+        vecs = Array(vecs[0...idx])
+        vecNames = Array(vecNames[0...idx])
+    }
 
     public func frequency() -> Double {
         var result = [Double](repeating: 0.0, count: self.count-1)
@@ -231,74 +253,105 @@ public struct TimeSeries<T: FXBFloatingPoint> {
         }
     }
     
-    public mutating func apply(filter: FilterType, to colIdx: Int = 0, name: String?=nil) {
-        if Float.self is T.Type {
-            let x = self.col(at: colIdx) as! [Float]
-            var result = [Float](repeating: 0.0, count: self.count)
-
-            switch filter {
-            case .minMaxScaling: Filter.minMax(x: x, result: &result)
-            case .zscore: Filter.zscore(x: x, result: &result)
-            case .demean: Filter.demean(x: x, result: &result)
-            case .movingAverage(let w):
-                Filter.movingAverage(x: x, window: w, result: &result)
-            case .lowPass(let cutoff, let transition):
-                Filter.lowPass(
-                        x: x,
-                        frequency: 1.0/Float(frequency()),
-                        cutoff: cutoff,
-                        transition: transition,
-                        result: &result
-                )
-            case .highPass(let cutoff, let transition):
-                Filter.highpass(
-                    x: x,
-                    frequency: 1.0/Float(frequency()),
-                    cutoff: cutoff,
-                    transition: transition,
-                    result: &result
-                )
-            case .bandPass(let fH, let bH, let fL, let bL):
-                Filter.bandpass(
-                    x: x, frequency: 1.0/Float(frequency()),
-                    cutoffHigh: fH,
-                    transitionHigh: bH,
-                    cutoffLow: fL,
-                    transitionLow: bL,
-                    result: &result
-                )
-            case .bandReject(let fH, let bH, let fL, let bL):
-                Filter.bandreject(
-                    x: x, frequency: 1.0/Float(frequency()),
-                    cutoffHigh: fH,
-                    transitionHigh: bH,
-                    cutoffLow: fL,
-                    transitionLow: bL,
-                    result: &result
-                )
-            }
-
-            vecs.append(result as! [T])
+    private mutating func insert(_ x: [Float], name: String?=nil, idx: Int?=nil) {
+        if let idx = idx {
+            vecs.insert(x as! [T], at: idx)
+            vecNames.insert(name==nil ? String(idx) : name!, at: idx)
+        } else {
+            vecs.append(x as! [T])
             vecNames.append(name==nil ? String(vecs.count) : name!)
-        } else if Double.self is T.Type {
-            let x = self.col(at: colIdx) as! [Double]
-            var result = [Double](repeating: 0.0, count: self.count)
-
-            switch filter {
-            case .minMaxScaling: Filter.minMax(x: x, result: &result)
-            case .zscore: Filter.zscore(x: x, result: &result)
-            case .demean: Filter.demean(x: x, result: &result)
-            case .movingAverage(let w): Filter.movingAverage(x: x, window: w, result: &result)
-            case .lowPass(_, _): fatalError("lowpass filter not supported for double precision")
-            case .highPass(_, _): fatalError("highpass filter not supported for double precision")
-            case .bandPass(_, _, _, _): fatalError("bandpass filter not supported for double precision")
-            case .bandReject(_, _, _, _): fatalError("bandreject filter not supported for double precision")
-            }
-
-            vecs.append(result as! [T])
+        }
+        
+    }
+    
+    private mutating func insert(_ x: [Double], name: String?=nil, idx: Int?=nil) {
+        if let idx = idx {
+            vecs.insert(x as! [T], at: idx)
+            vecNames.insert(name==nil ? String(idx) : name!, at: idx)
+        } else {
+            vecs.append(x as! [T])
             vecNames.append(name==nil ? String(vecs.count) : name!)
         }
     }
+    
+    public mutating func apply<U: SignalFilter>(filter: U, to colIdx: Int = 0, name: String?=nil) {
+        if Float.self is T.Type {
+            let res = filter.apply(to: col(at: colIdx) as! [Float])
+            insert(res, name: name)
+        } else if Double.self is T.Type {
+            let res = filter.apply(to: col(at: colIdx) as! [Double])
+            insert(res, name: name)
+        }
+    }
+    
+//    public mutating func apply(filter: FilterType, to colIdx: Int = 0, name: String?=nil) {
+//        if Float.self is T.Type {
+//            let x = self.col(at: colIdx) as! [Float]
+//            var result = [Float](repeating: 0.0, count: self.count)
+//
+//            switch filter {
+//            case .minMaxScaling: Filter.minMax(x: x, result: &result)
+//            case .zscore: Filter.zscore(x: x, result: &result)
+//            case .demean: Filter.demean(x: x, result: &result)
+//            case .movingAverage(let w):
+//                Filter.movingAverage(x: x, window: w, result: &result)
+//            case .lowPass(let cutoff, let transition):
+//                Filter.lowPass(
+//                    x: x,
+//                    frequency: 1.0/Float(frequency()),
+//                    cutoff: cutoff,
+//                    transition: transition,
+//                    result: &result
+//                )
+//            case .highPass(let cutoff, let transition):
+//                Filter.highPass(
+//                    x: x,
+//                    frequency: 1.0/Float(frequency()),
+//                    cutoff: cutoff,
+//                    transition: transition,
+//                    result: &result
+//                )
+//            case .bandPass(let fH, let bH, let fL, let bL):
+//                Filter.bandPass(
+//                    x: x, frequency: 1.0/Float(frequency()),
+//                    cutoffHigh: fH,
+//                    transitionHigh: bH,
+//                    cutoffLow: fL,
+//                    transitionLow: bL,
+//                    result: &result
+//                )
+//            case .bandReject(let fH, let bH, let fL, let bL):
+//                Filter.bandReject(
+//                    x: x, frequency: 1.0/Float(frequency()),
+//                    cutoffHigh: fH,
+//                    transitionHigh: bH,
+//                    cutoffLow: fL,
+//                    transitionLow: bL,
+//                    result: &result
+//                )
+//            }
+//
+//            vecs.append(result as! [T])
+//            vecNames.append(name==nil ? String(vecs.count) : name!)
+//        } else if Double.self is T.Type {
+//            let x = self.col(at: colIdx) as! [Double]
+//            var result = [Double](repeating: 0.0, count: self.count)
+//
+//            switch filter {
+//            case .minMaxScaling: Filter.minMax(x: x, result: &result)
+//            case .zscore: Filter.zscore(x: x, result: &result)
+//            case .demean: Filter.demean(x: x, result: &result)
+//            case .movingAverage(let w): Filter.movingAverage(x: x, window: w, result: &result)
+//            case .lowPass(_, _): fatalError("lowpass filter not supported for double precision")
+//            case .highPass(_, _): fatalError("highpass filter not supported for double precision")
+//            case .bandPass(_, _, _, _): fatalError("bandpass filter not supported for double precision")
+//            case .bandReject(_, _, _, _): fatalError("bandreject filter not supported for double precision")
+//            }
+//
+//            vecs.append(result as! [T])
+//            vecNames.append(name==nil ? String(vecs.count) : name!)
+//        }
+//    }
 
     public mutating func apply(colIdx: Int, kernel: @escaping (T)->T, name: String?=nil) {
         guard colIdx < colCount else { return }

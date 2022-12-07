@@ -21,9 +21,9 @@ public class CombinationSinWaveGenerator: TimeSeriesGenerator {
     }
 
     public func next(_ count: Int = 1) {
-        for _ in 0...count {
+        for _ in 0...count { 
             let next = frequencies.reduce(0) { accumulator, freq in
-                return accumulator + sin( (Float(step) * Float(i) * freq * tau))
+                return accumulator + sin( (Float(step) * Float(i) * freq) )
             }
             ts.add(epoch: cursor, values: [next])
             cursor += step

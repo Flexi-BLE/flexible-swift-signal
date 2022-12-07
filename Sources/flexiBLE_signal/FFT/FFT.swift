@@ -17,7 +17,7 @@ public struct FFT {
 
     private var halfN: Int
 
-    init(N: Int) {
+    public init(N: Int) {
         self.N = N
         halfN = N/2
         let log2n = vDSP_Length(log2(Float(N)))
@@ -133,11 +133,11 @@ public struct FFT {
 
     public static func spectralAnalysis(of signal: [Float]) -> [Float] {
         let length = nextPowerOf2(for: signal.count)
-        var x = pad(x: signal, to: length)
+        let x = pad(x: signal, to: length)
 
         var fft = FFT(N: length)
         fft.forward(signal: x)
-        return fft.autoSpectrum()
+        return fft.autoSpectrum().map { sqrt($0) }
     }
 
     public static func componentFrequencies(of spectrum: [Float]) -> [Int] {
