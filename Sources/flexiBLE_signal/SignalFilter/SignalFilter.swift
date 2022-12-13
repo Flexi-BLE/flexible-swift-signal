@@ -19,7 +19,7 @@ public enum SignalFilterType: String {
     case bandPass = "Band Pass"
     case bandReject = "Band Reject"
     
-    var description: String {
+    public var description: String {
         switch self {
         case .none: return "--"
         case .minMaxScaling: return "the process of rescaling the range of features to scale the range in [0, 1] or [−1, 1]"
@@ -42,12 +42,30 @@ public protocol SignalFilter<FP> {
     func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Double
 }
 
+public class EmptyFilter: SignalFilter {
+    
+    public var type: SignalFilterType = .none
+    
+    public init() { }
+    
+    public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {
+        return [Float]() as! U
+    }
+    
+    public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Double {
+        return [Double]() as! U
+    }
+}
+
 public class MinMaxScalingFilter: SignalFilter {
     public var type: SignalFilterType = .minMaxScaling
     
-    public var min: FP?
-    public var max: FP?
+    public var min: FP? = nil
+    public var max: FP? = nil
     
+    public init() { }
+    
+
     public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {
         var result = [Float](repeating: 0.0, count: signal.count)
         (self.min, self.max) = Filter.minMax(x: signal as! [Float], result: &result)
@@ -64,8 +82,10 @@ public class MinMaxScalingFilter: SignalFilter {
 public class ZScoreFilter: SignalFilter {
     public var type: SignalFilterType = .zscore
 
-    public var mean: FP?
-    public var std: FP?
+    public var mean: FP? = nil
+    public var std: FP? = nil
+    
+    public init() {  }
 
     public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {
         var result = [Float](repeating: 0.0, count: signal.count)
@@ -83,8 +103,10 @@ public class ZScoreFilter: SignalFilter {
 
 public class DemeanFilter: SignalFilter {
     public var type: SignalFilterType = .demean
-
+    
     public var mean: FP?
+    
+    public init() {  }
 
     public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {
         var result = [Float](repeating: 0.0, count: signal.count)
@@ -105,7 +127,7 @@ public class MovingAverageFilter: SignalFilter {
 
     public var kernel: [FP]?
 
-    init(window: Int) {
+    public init(window: Int) {
         self.window = window
     }
 
@@ -130,7 +152,7 @@ public class LowPassFilter: SignalFilter {
 
     var kernel: [FP]?
 
-    init(frequency: Float, cutoffFrequency: Float, transitionFrequency: Float) {
+    public init(frequency: Float, cutoffFrequency: Float, transitionFrequency: Float) {
         self.frequency = frequency
         self.cutoffFrequency = cutoffFrequency
         self.transitionFrequency = transitionFrequency
@@ -162,7 +184,7 @@ public class HighPassFilter: SignalFilter {
 
     public var kernel: [FP]?
 
-    init(frequency: Float, cutoffFrequency: Float, transitionFrequency: Float) {
+    public init(frequency: Float, cutoffFrequency: Float, transitionFrequency: Float) {
         self.frequency = frequency
         self.cutoffFrequency = cutoffFrequency
         self.transitionFrequency = transitionFrequency
@@ -196,7 +218,7 @@ public class BandPassFilter: SignalFilter {
 
     public var kernel: [FP]?
 
-    init(
+    public init(
         frequency: Float,
         cutoffFrequencyHigh: Float,
         transitionFrequencyHigh: Float,
@@ -240,9 +262,8 @@ public class BandRejectFilter: SignalFilter {
 
     public var kernel: [FP]?
 
-    init(
+    public init(
         frequency: Float,
-
         cutoffFrequencyHigh: Float,
         transitionFrequencyHigh: Float,
         cutoffFrequencyLow: Float,
