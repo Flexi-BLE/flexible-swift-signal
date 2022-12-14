@@ -42,8 +42,13 @@ public protocol SignalFilter<FP> {
     func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Double
 }
 
-public class EmptyFilter: SignalFilter {
+public protocol IRFilter<FP>: SignalFilter {
+    associatedtype FP = FXBFloatingPoint
     
+    var kernel: [FP]? { get }
+}
+
+public class EmptyFilter: SignalFilter {
     public var type: SignalFilterType = .none
     
     public init() { }
@@ -121,7 +126,7 @@ public class DemeanFilter: SignalFilter {
     }
 }
 
-public class MovingAverageFilter: SignalFilter {
+public class MovingAverageFilter: IRFilter {
     public var type: SignalFilterType = .movingAverage
     public var window: Int
 
@@ -143,14 +148,14 @@ public class MovingAverageFilter: SignalFilter {
 }
 
 
-public class LowPassFilter: SignalFilter {
+public class LowPassFilter: IRFilter {
     public var type: SignalFilterType = .lowPass
 
     public var frequency: Float
     public var cutoffFrequency: Float
     public var transitionFrequency: Float
 
-    var kernel: [FP]?
+    public var kernel: [FP]?
 
     public init(frequency: Float, cutoffFrequency: Float, transitionFrequency: Float) {
         self.frequency = frequency
@@ -175,7 +180,7 @@ public class LowPassFilter: SignalFilter {
     }
 }
 
-public class HighPassFilter: SignalFilter {
+public class HighPassFilter: IRFilter {
     public var type: SignalFilterType = .highPass
 
     public var frequency: Float
@@ -207,7 +212,7 @@ public class HighPassFilter: SignalFilter {
     }
 }
 
-public class BandPassFilter: SignalFilter {
+public class BandPassFilter: IRFilter {
     public var type: SignalFilterType = .bandPass
 
     public var frequency: Float
@@ -228,8 +233,8 @@ public class BandPassFilter: SignalFilter {
         self.frequency = frequency
         self.cutoffFrequencyHigh = cutoffFrequencyHigh
         self.transitionFrequencyHigh = transitionFrequencyHigh
-        self.cutoffFrequencyLow = cutoffFrequencyHigh
-        self.transitionFrequencyLow = transitionFrequencyHigh
+        self.cutoffFrequencyLow = cutoffFrequencyLow
+        self.transitionFrequencyLow = transitionFrequencyLow
     }
 
     public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {
@@ -251,7 +256,7 @@ public class BandPassFilter: SignalFilter {
     }
 }
 
-public class BandRejectFilter: SignalFilter {
+public class BandRejectFilter: IRFilter {
     public var type: SignalFilterType = .bandReject
 
     public var frequency: Float
@@ -272,8 +277,8 @@ public class BandRejectFilter: SignalFilter {
         self.frequency = frequency
         self.cutoffFrequencyHigh = cutoffFrequencyHigh
         self.transitionFrequencyHigh = transitionFrequencyHigh
-        self.cutoffFrequencyLow = cutoffFrequencyHigh
-        self.transitionFrequencyLow = transitionFrequencyHigh
+        self.cutoffFrequencyLow = cutoffFrequencyLow
+        self.transitionFrequencyLow = transitionFrequencyLow
     }
 
     public func apply<U>(to signal: U) -> U where U: AccelerateBuffer, U.Element == Float {

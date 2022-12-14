@@ -8,7 +8,7 @@
 import Foundation
 import Accelerate
 
-public protocol FXBFloatingPoint: FloatingPoint { }
+public protocol FXBFloatingPoint: FloatingPoint, Equatable { }
 extension Float: FXBFloatingPoint { }
 extension Double: FXBFloatingPoint { }
 
@@ -157,10 +157,24 @@ public struct TimeSeries<T: FXBFloatingPoint>: Equatable {
         vecNames = Array(vecNames[0...idx])
     }
 
-    public func frequency() -> Double {
+    public func frequencySec() -> Double {
         var result = [Double](repeating: 0.0, count: self.count-1)
         vDSP.subtract(index.dropFirst(), index.dropLast(), result: &result)
         return vDSP.mean(result)
+    }
+    
+    public func frequencyHz() -> Double {
+        var result = [Double](repeating: 0.0, count: self.count-1)
+        vDSP.subtract(index.dropFirst(), index.dropLast(), result: &result)
+        return 1.0 / vDSP.mean(result)
+    }
+    
+    public func nyquistFrequencySec() -> Double {
+        return frequencySec() / 2.0
+    }
+    
+    public func nyquistFrequencyHz() -> Double {
+        return frequencyHz() / 2.0
     }
     
     public mutating func add(date: Date, values: [T]) {
@@ -274,13 +288,13 @@ public struct TimeSeries<T: FXBFloatingPoint>: Equatable {
         }
     }
     
-    public mutating func apply<U: SignalFilter>(filter: U, to colIdx: Int = 0, name: String?=nil) {
+    public mutating func apply<U: SignalFilter>(filter: U, to colIdx: Int = 0, name: String?=nil, at destIdx: Int?=nil) {
         if Float.self is T.Type {
             let res = filter.apply(to: col(at: colIdx) as! [Float])
-            insert(res, name: name)
+            insert(res, name: name, idx: destIdx)
         } else if Double.self is T.Type {
             let res = filter.apply(to: col(at: colIdx) as! [Double])
-            insert(res, name: name)
+            insert(res, name: name, idx: destIdx)
         }
     }
     

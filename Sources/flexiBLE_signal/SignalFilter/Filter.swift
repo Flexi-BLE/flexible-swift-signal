@@ -84,11 +84,11 @@ enum Filter {
             result: inout V
     ) -> [Float] where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
 
-        var m = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
+        let m = makeLowPassFilter(fS: fS, fL: fL, bL: bL)
 
         let r = Filter.applyFFT(signal: x, kernel: m)
-        result =  r.result as! V
-        return r.irKernel
+        result = r as! V
+        return m
     }
 
     static func highPass<U,V>(
@@ -100,11 +100,11 @@ enum Filter {
     ) -> [Float] where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
 
         // create the filter
-        var m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
+        let m = makeHighPassFilter(fS: fS, fH: fH, bH: bH)
 
         let r = Filter.applyFFT(signal: x, kernel: m)
-        result =  r.result as! V
-        return r.irKernel
+        result =  r as! V
+        return m
     }
 
     static func bandPass<U,V>(
@@ -117,11 +117,11 @@ enum Filter {
             result: inout V
     ) -> [Float] where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
 
-        var m = makeBandPassFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
+        let m = makeBandPassFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
 
         let r = Filter.applyFFT(signal: x, kernel: m)
-        result =  r.result as! V
-        return r.irKernel
+        result =  r as! V
+        return m
     }
 
     static func bandReject<U,V>(
@@ -134,13 +134,13 @@ enum Filter {
             result: inout V
     ) -> [Float] where U: AccelerateBuffer, U:Sequence, V: AccelerateMutableBuffer, U.Element == Float, V.Element == Float {
 
-        var m = makeBandRejectFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
+        let m = makeBandRejectFilter(fS: fS, fH: fH, bH: bH, fL: fL, bL: bL)
         let r = Filter.applyFFT(signal: x, kernel: m)
-        result =  r.result as! V
-        return r.irKernel
+        result =  r as! V
+        return m
     }
     
-    static func applyFFT<U>(signal: U, kernel: [Float]) -> (result: [Float], irKernel: [Float]) where U:Sequence, U:AccelerateBuffer, U.Element == Float {
+    static func applyFFT<U>(signal: U, kernel: [Float]) -> [Float] where U:Sequence, U:AccelerateBuffer, U.Element == Float {
         let length = nextPowerOf2(for: max(kernel.count, signal.count))
         let paddedSignal = pad(x: signal, to: length)
         let m = pad(x: kernel, to: length)
@@ -166,7 +166,7 @@ enum Filter {
         let result = (Array(fft.inverse()[0..<signal.count]))
         fft.clear()
         
-        return (result: result, irKernel: filterIRReal)
+        return result
     }
     
 //    static func applyFFT<U>(signal: U, kernel: U) -> (result: [Double], irKernel: [Double]) where U:Sequence, U:AccelerateBuffer, U.Element == Double {

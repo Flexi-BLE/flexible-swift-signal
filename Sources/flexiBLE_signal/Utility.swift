@@ -90,7 +90,7 @@ public func makeHighPassFilter(fS: Double, fH: Double, bH: Double) -> [Double] {
     // spectral inversion
     vDSP.multiply([Double](repeating: -1.0, count: m.count), m, result: &m)
     m[Int(m.count/2)] += 1.0
-
+ 
     return m
 }
 

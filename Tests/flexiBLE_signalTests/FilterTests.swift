@@ -60,7 +60,7 @@ final class vDSPTests: XCTestCase {
         let sig = CombinationSinWaveGenerator(frequencies: [1, 10, 20], step: 0.001, persistence: 6_000)
         sig.next(6_000)
 
-        let filter = LowPassFilter(frequency: Float(sig.ts.frequency()), cutoffFrequency: 15, transitionFrequency: 2)
+        let filter = LowPassFilter(frequency: Float(sig.ts.frequencyHz()), cutoffFrequency: 15, transitionFrequency: 2)
         sig.ts.apply(filter: filter)
 
         print()
