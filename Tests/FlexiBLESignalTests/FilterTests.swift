@@ -22,11 +22,11 @@ final class vDSPTests: XCTestCase {
         sig.next(1_001)
 
         let factor: Float = 10.0
-        sig.ts.apply(colIdx: 0, vec: [Float](repeating: factor, count: sig.ts.count), op: .add)
+        sig.ts.col(at: 0).applyInPlace(kernel: { $0 + 10 })
         let filter = MinMaxScalingFilter()
         sig.ts.apply(filter: filter)
 
-        XCTAssertEqual(Int(vDSP.mean(sig.ts.col(at: 1)) * 100), Int(factor * 100))
+        XCTAssertEqual(Int(vDSP.mean(sig.ts.vector(at: 0)) * 100), Int(factor * 100))
     }
 
     func testZScore() throws {
@@ -35,10 +35,10 @@ final class vDSPTests: XCTestCase {
         sig.next(1_001)
 
         let factor: Float = 10.0
-        sig.ts.apply(colIdx: 0, vec: [Float](repeating: factor, count: sig.ts.count), op: .add)
+        sig.ts.col(at: 0).applyInPlace(kernel: { $0 + 10 })
         sig.ts.apply(filter: ZScoreFilter())
 
-        XCTAssertEqual(Int(vDSP.mean(sig.ts.col(at: 1)) * 100), Int(factor * 100))
+        XCTAssertEqual(Int(vDSP.mean(sig.ts.vector(at: 0)) * 100), Int(factor * 100))
     }
 
     func testMovingAverage() throws {
@@ -47,13 +47,14 @@ final class vDSPTests: XCTestCase {
 
         let noise = GaussianNoiseGenerator(mean: 0.0, std: 1.0, step: 0.1)
         noise.next(1_000)
-        sig.ts.apply(colIdx: 0, vec: noise.ts.col(at: 0), op: .add)
+        
+        sig.ts.insert(column: sig.ts.col(at: 0).add(noise.ts.col(at: 0)))
 
-        let filter = MovingAverageFilter(window: 10)
-        sig.ts.apply(filter: filter, to: 1)
+        let filter = ConvolutionMovingAverage(window: 10)
+        let filteredVector = filter.apply(to: sig.ts.vector(at: 1))
 
-        XCTAssertLessThan(vDSP.maximum(sig.ts.col(at: 2)), vDSP.maximum(sig.ts.col(at: 1)))
-        XCTAssertGreaterThan(vDSP.minimum(sig.ts.col(at: 2)), vDSP.minimum(sig.ts.col(at: 1)))
+        XCTAssertLessThan(vDSP.maximum(sig.ts.vector(at: 2)), vDSP.maximum(sig.ts.vector(at: 1)))
+        XCTAssertGreaterThan(vDSP.minimum(sig.ts.vector(at: 2)), vDSP.minimum(sig.ts.vector(at: 1)))
     }
 
     func testLowPass() throws {
@@ -69,7 +70,7 @@ final class vDSPTests: XCTestCase {
     func testMinMaxPerformance() throws {
         self.measure {
             for _ in 0..<10 {
-                var ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
+                let ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
                 ts.apply(filter: MinMaxScalingFilter(), to: 0)
             }
         }
@@ -78,7 +79,7 @@ final class vDSPTests: XCTestCase {
     func testDemeanPerformance() throws {
         self.measure {
             for _ in 0..<10 {
-                var ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
+                let ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
                 ts.apply(filter: DemeanFilter(), to: 0)
             }
         }
@@ -87,7 +88,7 @@ final class vDSPTests: XCTestCase {
     func testZscorePerformance() throws {
         self.measure {
             for _ in 0..<10 {
-                var ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
+                let ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
                 ts.apply(filter: ZScoreFilter(), to: 0)
             }
         }
@@ -96,8 +97,8 @@ final class vDSPTests: XCTestCase {
     func testMovingAveragePerformance() throws {
         self.measure {
             for _ in 0..<10 {
-                var ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
-                ts.apply(filter: MovingAverageFilter(window: 50), to: 0)
+                let ts = TimeSeries(with: Date.now.addingTimeInterval(-100_000)...Date.now, step: 1.0)
+                ts.apply(filter: ConvolutionMovingAverage(window: 50), to: 0)
             }
         }
     }

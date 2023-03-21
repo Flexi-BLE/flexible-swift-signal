@@ -27,7 +27,7 @@ final class TimeSeriesTests: XCTestCase {
         
         XCTAssertEqual(ts.count, 60)
         XCTAssertEqual(ts.colCount, 1)
-        XCTAssertEqual(ts.col(at: 0).reduce(0, +), 0)
+        XCTAssertEqual(ts.vector(at: 0).reduce(0, +), 0)
         XCTAssertEqual(ts.frequencyHz(), 1.0)
         XCTAssertEqual(ts.index.first ?? 0.0, start.timeIntervalSince1970)
         XCTAssertEqual(
@@ -45,12 +45,12 @@ final class TimeSeriesTests: XCTestCase {
         
         XCTAssertEqual(ts.count, Int(length / step))
         XCTAssertEqual(ts.colCount, 1)
-        XCTAssertEqual(ts.col(at: 0).reduce(0, +), Float(ts.count))
-        XCTAssertEqual(Int(ts.frequencyHz() * 100), Int(step * 100))
+        XCTAssertEqual(ts.vector(at: 0).reduce(0, +), Float(ts.count))
+        XCTAssertEqual(Int(ts.frequencyHz() * 1_000_000), Int( (1.0/step) * 1_000_000))
     }
 
     func testLimitingPersistence() throws {
-        var ts: TimeSeries<Float> = TimeSeries(persistence: 100)
+        let ts: TimeSeries<Float> = TimeSeries(persistence: 100)
 
         for i in 0...99 {
             ts.add(date: Date.now.addingTimeInterval(Double(i)), values: [1.0])
@@ -65,11 +65,12 @@ final class TimeSeriesTests: XCTestCase {
         XCTAssertEqual(ts.count, 100)
         XCTAssertEqual(ts.index[0], secondDate)
         XCTAssertEqual(ts.index.last, lastDate.timeIntervalSince1970)
-        XCTAssertEqual(Int(ts.frequencyHz() * 100), 100)
+        // test with millisecond accurarcy
+        XCTAssertEqual(ts.frequencyHz() * 100, 100, accuracy: 0.001)
     }
 
     func testSorting() throws {
-        var unsortedTS = TimeSeries<Float>(persistence: 500)
+        let unsortedTS = TimeSeries<Float>(persistence: 500)
         for i in 0...99 {
             unsortedTS.add(epoch: Double(i), values: [0, Float(i*1)])
             unsortedTS.add(epoch: Double(i)+0.1, values: [1, Float(i*2)])
@@ -91,44 +92,46 @@ final class TimeSeriesTests: XCTestCase {
         XCTAssertEqual(cat2.count, 100)
         XCTAssertEqual(cat3.count, 100)
 
-        XCTAssertEqual(Set(cat1.col(at: 0)), Set<Float>([Float(0.0)]))
-        XCTAssertEqual(Set(cat2.col(at: 0)), Set<Float>([Float(1.0)]))
-        XCTAssertEqual(Set(cat3.col(at: 0)), Set<Float>([Float(2.0)]))
+        XCTAssertEqual(Set(cat1.vector(at: 0)), Set<Float>([Float(0.0)]))
+        XCTAssertEqual(Set(cat2.vector(at: 0)), Set<Float>([Float(1.0)]))
+        XCTAssertEqual(Set(cat3.vector(at: 0)), Set<Float>([Float(2.0)]))
     }
 
     func testvDSPApply() throws {
-        var ts = TimeSeries<Double>(persistence: 100)
+        let ts = TimeSeries<Double>(persistence: 100)
         for i in -50...50 {
             ts.add(epoch: Double(i), values: [Double(i)])
         }
 
-        XCTAssertLessThan(ts.col(at: 0)[0], 0)
+        XCTAssertLessThan(ts.vector(at: 0)[0], 0)
 
-        ts.vApply(colIdx: 0) { (x: [Double], y: inout [Double]) in
+        ts.insert(column: ts.col(at: 0).vApply { (x: [Double], y: inout [Double]) in
             vDSP.absolute(x, result: &y)
-        }
+        })
 
-        XCTAssertGreaterThan(ts.col(at: 1)[0], 0)
+        XCTAssertGreaterThan(ts.vector(at: 1)[0], 0)
     }
 
     func testColumnNames() throws {
-        var ts = TimeSeries<Float>(persistence: 500)
+        let ts = TimeSeries<Float>(persistence: 500)
         for i in 0...99 {
             ts.add(epoch: Double(i), values: [0, Float(1)])
             ts.add(epoch: Double(i) + 0.1, values: [1, Float(2)])
             ts.add(epoch: Double(i) + 0.2, values: [2, Float(3)])
         }
 
-        XCTAssertEqual(ts.col(with: "1").count, 300)
-        XCTAssertEqual(ts.col(with: "2").count, 300)
+        XCTAssertEqual(ts.vector(with: "1").count, 0) // no name
+        XCTAssertEqual(ts.vector(at: 0).count, 300)
+        XCTAssertEqual(ts.vector(with: "2").count, 0) // no name
+        XCTAssertEqual(ts.vector(at: 1).count, 300)
 
-        ts.setColNames(["one", "two"])
-        XCTAssertEqual(ts.col(with: "one").count, 300)
-        XCTAssertEqual(ts.col(with: "two").count, 300)
+        ts.set(names: ["one", "two"])
+        XCTAssertEqual(ts.vector(with: "one").count, 300)
+        XCTAssertEqual(ts.vector(with: "two").count, 300)
     }
 
     func testPurge() throws {
-        var ts = TimeSeries<Float>(persistence: 500)
+        let ts = TimeSeries<Float>(persistence: 500)
         let startDate = Date.now
         for i in 0...99 {
             ts.add(date: startDate.addingTimeInterval(Double(i)), values: [Float(i)])
@@ -139,7 +142,7 @@ final class TimeSeriesTests: XCTestCase {
     }
 
     func testSortingPerformance() throws {
-        var unsortedTS = TimeSeries<Float>(persistence: 3000)
+        let unsortedTS = TimeSeries<Float>(persistence: 3000)
         for i in 0...1000 {
             unsortedTS.add(epoch: Double(i), values: [0, Float(i*1)])
             unsortedTS.add(epoch: Double(i)+0.1, values: [1, Float(i*2)])

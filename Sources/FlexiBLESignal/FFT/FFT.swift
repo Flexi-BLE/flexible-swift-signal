@@ -130,6 +130,35 @@ public struct FFT {
             }
         }
     }
+    
+    public static func applyFFT<U>(signal: U, kernel: [Float]) -> [Float] where U:Sequence, U:AccelerateBuffer, U.Element == Float {
+        let length = nextPowerOf2(for: max(kernel.count, signal.count))
+        let paddedSignal = pad(x: signal, to: length)
+        let m = pad(x: kernel, to: length)
+
+        // compute the impluse response of signal
+        var fft = FFT(N: length)
+        fft.forward(signal: paddedSignal)
+        var signalIRReal = fft.forwardReal
+        var signalIRImag = fft.forwardImag
+
+        // compute impluse response for filter
+        fft.clear()
+        fft.forward(signal: m)
+        var filterIRReal = fft.forwardReal
+        var filterIRImag = fft.forwardImag
+
+        vDSP.multiply(signalIRReal, filterIRReal, result: &filterIRReal)
+        vDSP.multiply(signalIRImag, filterIRImag, result: &filterIRImag)
+
+        fft.clear()
+        fft.forwardReal = filterIRReal
+        fft.forwardImag = filterIRImag
+        let result = (Array(fft.inverse()[0..<signal.count]))
+        fft.clear()
+        
+        return result
+    }
 
     public static func spectralAnalysis(of signal: [Float]) -> [Float] {
         let length = nextPowerOf2(for: signal.count)
