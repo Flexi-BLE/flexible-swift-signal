@@ -13,7 +13,7 @@ public class TimeSeriesColumn<T: FXBFloatingPoint>: Equatable, Identifiable {
     public var name: String?
     public private(set) var vector: [T]
     
-    private(set) var filters: [any SignalFilter] = []
+    public private(set) var filters: [any SignalFilter] = []
     
     internal init(name: String?=nil, vector: [T] = []) {
         self.id = UUID()
@@ -37,6 +37,10 @@ public class TimeSeriesColumn<T: FXBFloatingPoint>: Equatable, Identifiable {
         self.filters.append(filter)
     }
     
+    public func clearFilters() {
+        self.filters = []
+    }
+    
     public func dropFirst(_ k: Int = 1) {
         vector = Array(vector.dropFirst(k))
     }
@@ -47,9 +51,9 @@ public class TimeSeriesColumn<T: FXBFloatingPoint>: Equatable, Identifiable {
         }
         
         var v = val
-        if Float.self is T {
+        if Float.self is T.Type {
             filters.forEach({ v = $0.apply(to: v as! Float) as! T })
-        } else if Double.self is T {
+        } else if Double.self is T.Type {
             filters.forEach({ v = $0.apply(to: v as! Double) as! T })
         }
         

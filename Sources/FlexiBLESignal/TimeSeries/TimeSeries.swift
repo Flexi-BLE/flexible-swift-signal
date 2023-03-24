@@ -22,7 +22,7 @@ public class TimeSeries<T: FXBFloatingPoint>: Equatable {
     
     public private(set) var index: Array<Double>
 
-    private var columns: [TimeSeriesColumn<T>]
+    public private(set) var columns: [TimeSeriesColumn<T>]
     
     public private(set) var persistence: Int
 
